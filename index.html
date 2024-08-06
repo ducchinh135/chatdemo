@@ -122,7 +122,7 @@
           try {
             isLoading.value = true;
             const response = await axios.post(
-              API_URL,
+              url,
               {
                 stream: false,
                 uuid: UUID,
