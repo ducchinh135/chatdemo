@@ -165,7 +165,7 @@
       const { createApp, ref } = Vue;
 
       const API_URL = "http://localhost:3000/askai";
-      const UUID = "and@chatAI2@560cdd9b-76f9-442b-abdf-aa460a95e592";
+      const UUID = "and@chatAI2@c5fd42b0-f1ae-4828-b50d-5a56d22a3ab2";
 
       createApp({
         setup() {
@@ -186,7 +186,10 @@
 
             // Xác định nội dung tin nhắn đầu tiên với định dạng đặc biệt
             const formattedMessage = isFirstMessage.value
-              ? settingsText.value + " Câu hỏi của tôi là: " + userInput.value
+              ? "Tôi sẽ nói cho bạn biết: " +
+                settingsText.value +
+                ".Giờ tôi hỏi bạn " +
+                userInput.value
               : userInput.value;
 
             try {
