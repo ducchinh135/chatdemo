@@ -264,6 +264,8 @@
     <script>
       const { createApp, ref, nextTick } = Vue;
 
+      const apiKey = "app-gLNrewdFnF09FOplM33bFoZe";
+
       createApp({
         setup() {
           const userInput = ref("");
@@ -289,36 +291,35 @@
                 content: userInput.value,
               });
 
-              const systemMessage = {
-                role: "system",
-                content: "Bạn là trợ lý Ai tuyệt vời. Hãy trả lời ngắn gọn",
-              };
-
+              // Add an initial message for the assistant
               const allMessages = [
-                systemMessage,
                 ...messages.value.map((msg) => ({
                   role: msg.role,
                   content: msg.content,
                 })),
               ];
 
+              const data = {
+                inputs: {}, // Chỉnh sửa nếu cần thiết cho các biến khác
+                query: userInput.value, // Nội dung tin nhắn từ người dùng
+                response_mode: "streaming",
+                conversation_id: "",
+                user: "Dify", // Bạn có thể thay đổi giá trị này
+              };
+
               const response = await fetch(
-                "http://192.168.137.1:1234/v1/chat/completions",
+                "https://api.dify.ai/v1/chat-messages",
                 {
                   method: "POST",
                   headers: {
+                    Authorization: `Bearer ${apiKey}`,
                     "Content-Type": "application/json",
                   },
-                  body: JSON.stringify({
-                    model:
-                      "uonlp/Vistral-7B-Chat-gguf/ggml-vistral-7B-chat-q4_0.gguf",
-                    temperature: 0.7,
-                    max_tokens: -1,
-                    stream: true, // Bật chế độ streaming
-                    messages: allMessages,
-                  }),
+                  body: JSON.stringify(data),
                 }
               );
+
+              console.log(response);
 
               userInput.value = "";
 
@@ -327,11 +328,14 @@
               let result = "";
 
               // Add an initial message for the assistant
+              // Add an initial message for the assistant
+              const assistantMessageIndex = messages.value.length;
               messages.value.push({
                 role: "assistant",
                 content: "",
               });
 
+              // Process the streaming response
               while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
@@ -342,8 +346,8 @@
                 const contentChunks = result
                   .split("\n")
                   .filter((line) => line.trim());
+
                 for (const chunk of contentChunks) {
-                  // Tách phần JSON từ chuỗi `data: { ... }`
                   const jsonChunks = chunk
                     .split("data: ")
                     .filter((part) => part.trim());
@@ -351,21 +355,52 @@
                   for (const jsonChunk of jsonChunks) {
                     try {
                       const data = JSON.parse(jsonChunk);
-                      if (data.choices && data.choices.length > 0) {
-                        const content = data.choices[0].delta?.content || "";
 
-                        // Update the last assistant message with the new content
-                        const lastMessage =
-                          messages.value[messages.value.length - 1];
-                        lastMessage.content += content;
+                      switch (data.event) {
+                        case "agent_message":
+                          const content = data.answer || "";
+                          // Update the last assistant message with the new content
+                          const lastMessage =
+                            messages.value[assistantMessageIndex];
+                          lastMessage.content += content;
+                          break;
 
-                        nextTick(() => {
-                          // Cuộn xuống khi có tin nhắn mới
-                          const chatBox = document.querySelector(".chat-box");
-                          if (chatBox) {
-                            chatBox.scrollTop = chatBox.scrollHeight;
-                          }
-                        });
+                        case "agent_thought":
+                          console.log("Agent Thought:", data.thought);
+                          // Optionally handle agent thoughts
+                          break;
+
+                        case "tts_message":
+                          console.log("TTS Message:", data.audio);
+                          // Handle TTS message and play audio if needed
+                          break;
+
+                        case "tts_message_end":
+                          console.log("TTS Message End");
+                          // Handle the end of TTS message if needed
+                          break;
+
+                        case "message_end":
+                          console.log("Message End");
+                          isTyping.value = false;
+                          break;
+
+                        case "error":
+                          console.error("Error:", data.message);
+                          // Handle error event
+                          isTyping.value = false;
+                          break;
+
+                        case "message_file":
+                          // Handle file messages if needed
+                          break;
+
+                        case "message_replace":
+                          // Handle message replacement if needed
+                          break;
+
+                        default:
+                          console.log("Unknown event type:", data.event);
                       }
                     } catch (error) {
                       console.error("Error parsing JSON chunk", error);
@@ -375,6 +410,8 @@
 
                 // Clear the result after processing
                 result = "";
+
+                console.log(messages);
               }
             } catch (error) {
               console.error("There was an error with the API request", error);
