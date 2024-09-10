@@ -207,6 +207,7 @@
                       placeholder="Điền câu hỏi của bạn..."
                       class="flex-1 rounded-md shadow-sm p-2 w-full h-auto resize-none mr-1"
                       rows="1"
+                      @keyup.enter="sendMessage"
                     ></textarea>
                     <button
                       type="submit"
@@ -288,11 +289,14 @@
           async function sendMessage() {
             if (!userInput.value.trim()) return;
 
+            const contentInput = userInput.value;
+            userInput.value = "";
+
             try {
               // Append user message
               messages.value.push({
                 role: "user",
-                content: userInput.value,
+                content: contentInput,
               });
 
               // Add an initial message for the assistant
@@ -305,7 +309,7 @@
 
               const data = {
                 inputs: {}, // Chỉnh sửa nếu cần thiết cho các biến khác
-                query: userInput.value, // Nội dung tin nhắn từ người dùng
+                query: contentInput, // Nội dung tin nhắn từ người dùng
                 response_mode: "streaming",
                 conversation_id: "",
                 user: "Dify", // Bạn có thể thay đổi giá trị này
